@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package proto;
+
+option go_package = "github.com/devlongs/sepolia-data-collector/proto";
+
+message EventData {
+    string l1_info_root = 1;
+    uint64 block_time = 2;
+    string parent_hash = 3;
+}
