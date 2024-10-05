@@ -34,6 +34,9 @@ func (db *LevelDB) RetrieveEvent(index, logIndex int) (*models.EventData, error)
 	key := fmt.Sprintf("%d-%d", index, logIndex)
 	data, err := db.Get([]byte(key), nil)
 	if err != nil {
+		if err == leveldb.ErrNotFound {
+			return nil, err
+		}
 		return nil, fmt.Errorf("failed to retrieve data: %v", err)
 	}
 
