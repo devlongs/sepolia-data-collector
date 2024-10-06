@@ -1,4 +1,4 @@
-package ethereum
+package network
 
 import (
 	"context"
@@ -11,26 +11,26 @@ import (
 	models "github.com/devlongs/sepolia-data-collector/internal/types"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/ethclient"
 )
 
 type Client struct {
-	*ethclient.Client
+	LB *LoadBalancer
 }
 
-func NewClient(rpcURL string) (*Client, error) {
-	client, err := ethclient.Dial(rpcURL)
+func NewClient(urls []string) (*Client, error) {
+	lb, err := NewLoadBalancer(urls)
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to Sepolia client: %v", err)
+		return nil, fmt.Errorf("failed to create load balancer: %v", err)
 	}
-	return &Client{client}, nil
+	return &Client{LB: lb}, nil
 }
 
 func (c *Client) getContractCreationBlock(contractAddress common.Address) (uint64, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
-	header, err := c.HeaderByNumber(ctx, nil)
+	client := c.LB.GetClient()
+	header, err := client.HeaderByNumber(ctx, nil)
 	if err != nil {
 		return 0, fmt.Errorf("Failed to get latest block: %v", err)
 	}
@@ -43,7 +43,7 @@ func (c *Client) getContractCreationBlock(contractAddress common.Address) (uint6
 	for low <= high {
 		mid := (low + high) / 2
 
-		code, err := c.CodeAt(ctx, contractAddress, big.NewInt(int64(mid)))
+		code, err := client.CodeAt(ctx, contractAddress, big.NewInt(int64(mid)))
 		if err != nil {
 			return 0, fmt.Errorf("Failed to get code at block %d: %v", mid, err)
 		}
@@ -73,7 +73,8 @@ func (c *Client) FetchAndStoreEvents(db *storage.LevelDB, contractAddressStr, to
 	}
 	log.Printf("Contract was deployed at block number: %d\n", startBlock)
 
-	latestBlockHeader, err := c.HeaderByNumber(context.Background(), nil)
+	client := c.LB.GetClient()
+	latestBlockHeader, err := client.HeaderByNumber(context.Background(), nil)
 	if err != nil {
 		return fmt.Errorf("failed to fetch the latest block header: %v", err)
 	}
@@ -98,7 +99,8 @@ func (c *Client) FetchAndStoreEvents(db *storage.LevelDB, contractAddressStr, to
 			ToBlock:   big.NewInt(int64(endBlock)),
 		}
 
-		logs, err := c.FilterLogs(context.Background(), query)
+		client := c.LB.GetClient()
+		logs, err := client.FilterLogs(context.Background(), query)
 		if err != nil {
 			return fmt.Errorf("failed to filter logs: %v", err)
 		}
@@ -108,7 +110,8 @@ func (c *Client) FetchAndStoreEvents(db *storage.LevelDB, contractAddressStr, to
 		for _, vLog := range logs {
 			log.Printf("Processing log from block %d, transaction hash: %s\n", vLog.BlockNumber, vLog.TxHash.Hex())
 
-			block, err := c.BlockByNumber(context.Background(), big.NewInt(int64(vLog.BlockNumber)))
+			client := c.LB.GetClient()
+			block, err := client.BlockByNumber(context.Background(), big.NewInt(int64(vLog.BlockNumber)))
 			if err != nil {
 				return fmt.Errorf("failed to fetch block: %v", err)
 			}
