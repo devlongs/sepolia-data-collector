@@ -1,14 +1,13 @@
 # Sepolia Data Collector 
 
 ## Overview
-The Sepolia Data Collector is a Go-based application designed to efficiently download and store data from the Sepolia Ethereum testnet. It focuses on retrieving specific event logs from a designated smart contract and storing the associated L1 info root, block time, and parent hash data.
+This branch (`challenge-2/rpc-load-balancer`) contains the implementation for Challenge 2 of the technical test. It implements an efficient way to make use of multiple RPC endpoints to spread the load and download data as quickly as possible.
 
-## Features
-- Fetch logs from the Sepolia testnet using Ethereum smart contract events.
-- Store event data efficiently using LevelDB.
-- Support batch log fetching to minimize network overhead.
-- Easily configurable through environment variables.
-- Robust error handling and logging for seamless blockchain interaction.
+## Key features:
+- Load balancing across multiple RPC endpoints
+- Dynamic latency-based endpoint selection
+- Concurrent data fetching
+
 
 ## Prerequisites
 
@@ -33,7 +32,7 @@ mod tidy
 ## Configuration
 Create a .env file in the root directory with the following contents:
 ```bash
-RPC_URL=https://sepolia.infura.io/v3/YOUR-PROJECT-ID
+RPC_URLS=https://sepolia.infura.io/v3/YOUR-PROJECT-ID,https://sepolia.infura.io/v3/YOUR-PROJECT-ID  
 CONTRACT_ADDRESS=0x761d53b47334bee6612c0bd1467fb881435375b2
 TOPIC_HASH=0x3e54d0825ed78523037d00a81759237eb436ce774bd546993ee67a1b67b6e766
 BLOCK_RANGE_SIZE=10000
